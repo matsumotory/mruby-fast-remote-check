@@ -19,7 +19,11 @@ end
  => #<FastRemoteCheck:0x139d560>
 > f.open_raw?
  => true
+> f.ready?(:raw)
+ => true
 > f.connect?
+ => true
+> f.ready?(:connect)
  => true
 > f = FastRemoteCheck.new("127.0.0.1", 54321, "127.0.0.1", 6378, 3)
  => #<FastRemoteCheck:0x139d2c0>
