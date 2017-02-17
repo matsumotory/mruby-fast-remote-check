@@ -199,12 +199,12 @@ static mrb_value mrb_fastremotecheck_init(mrb_state *mrb, mrb_value self)
   return self;
 }
 
-static mrb_int fastremotecheck_create_raw_socket(mrb_state *mrb, struct timeval timeout)
+static mrb_int socket_with_timeout(mrb_state *mrb, int type, int protocol, struct timeval timeout)
 {
   mrb_int sock;
   mrb_int ret;
 
-  sock = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
+  sock = socket(AF_INET, type, protocol);
   if (sock < 0) {
     mrb_fastremotecheck_sys_fail(mrb, errno, "socket failed. need CAP_NET_RAW?");
   }
@@ -244,7 +244,7 @@ static mrb_value mrb_fastremotecheck_port_raw(mrb_state *mrb, mrb_value self)
   mrb_int max_retry = 5; /* default max retry */
   mrb_fastremotecheck_data *data = DATA_PTR(self);
 
-  sock = fastremotecheck_create_raw_socket(mrb, data->timeout);
+  sock = socket_with_timeout(mrb, SOCK_RAW, IPPROTO_TCP, data->timeout);
 
   ret = sendto(sock, data->tcphdr, data->tcphdr_size, 0, data->peer_ptr, data->saddr_size);
   if (ret < 0) {
@@ -281,27 +281,12 @@ static mrb_value mrb_fastremotecheck_connect_so_linger(mrb_state *mrb, mrb_value
   int ret;
   int sock;
   struct linger so_linger;
-  struct timeval timeout;
   mrb_fastremotecheck_data *data = DATA_PTR(self);
 
   so_linger.l_onoff = 1;
   so_linger.l_linger = 0;
-  timeout = data->timeout;
 
-  sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-  if (sock < 0) {
-    mrb_fastremotecheck_sys_fail(mrb, errno, "socket failed");
-  }
-
-  ret = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
-  if (ret < 0) {
-    mrb_fastremotecheck_sys_fail(mrb, errno, "setsockopt SO_RCVTIMEO failed");
-  }
-
-  ret = setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout));
-  if (ret < 0) {
-    mrb_fastremotecheck_sys_fail(mrb, errno, "setsockopt SO_SNDTIMEO failed");
-  }
+  sock = socket_with_timeout(mrb, SOCK_STREAM, IPPROTO_TCP, data->timeout);
 
   ret = connect(sock, data->peer_ptr, data->saddr_size);
   if (ret < 0) {
