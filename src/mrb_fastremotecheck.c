@@ -314,7 +314,7 @@ void mrb_mruby_fast_remote_check_gem_init(mrb_state *mrb)
   fastremotecheck = mrb_define_class(mrb, "FastRemoteCheck", mrb->object_class);
   mrb_define_method(mrb, fastremotecheck, "initialize", mrb_fastremotecheck_init, MRB_ARGS_REQ(5));
   mrb_define_method(mrb, fastremotecheck, "open_raw?", mrb_fastremotecheck_port_raw, MRB_ARGS_NONE());
-  mrb_define_method(mrb, fastremotecheck, "connect?", mrb_fastremotecheck_connect_so_linger, MRB_ARGS_NONE());
+  mrb_define_method(mrb, fastremotecheck, "connectable?", mrb_fastremotecheck_connect_so_linger, MRB_ARGS_NONE());
   DONE;
 }
 

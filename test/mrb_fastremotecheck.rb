@@ -24,16 +24,16 @@ assert("FastRemoteCheck#oepn_raw? for ip unreachable") do
   assert_true (after - before) < (timeout + 1)
 end
 
-assert("FastRemoteCheck#connect? for listeing") do
+assert("FastRemoteCheck#connectable? for listeing") do
   # check redis port
   t = FastRemoteCheck.new "127.0.0.1", 54321, "127.0.0.1", 6379, 3
-  assert_true t.connect?
+  assert_true t.connectable?
 end
 
-assert("FastRemoteCheck#connect? for not linsting") do
+assert("FastRemoteCheck#connectable? for not linsting") do
   # check redis port
   t = FastRemoteCheck.new "127.0.0.1", 54321, "127.0.0.1", 6380, 3
-  assert_false t.connect?
+  assert_false t.connectable?
 end
 
 assert("FastRemoteCheck#oepn_raw? for ip unreachable") do
@@ -41,7 +41,7 @@ assert("FastRemoteCheck#oepn_raw? for ip unreachable") do
   timeout = 2
   t = FastRemoteCheck.new "127.0.0.1", 54321, "1.1.1.1", 6380, timeout
   before = Time.now
-  assert_raise(RuntimeError) { t.connect? }
+  assert_raise(RuntimeError) { t.connectable? }
   after = Time.now
   assert_true (after - before) < (timeout + 1)
 end
