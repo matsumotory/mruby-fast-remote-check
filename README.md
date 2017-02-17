@@ -49,23 +49,23 @@ end
  => #<FastRemoteCheck:0x139d560>
 > f.open_raw?
  => true
-> f.ready?(:raw)
+> f.ready?(:raw) # alias f.open_raw?
  => true
-> f.connect?
+> f.connectable?
  => true
-> f.ready?(:connect)
+> f.ready?(:connect) # alias f.connectable?
  => true
 > f = FastRemoteCheck.new("127.0.0.1", 54321, "127.0.0.1", 6378, 3)
  => #<FastRemoteCheck:0x139d2c0>
 > f.open_raw?
  => false
-> f.connect?
+> f.connectable?
  => false
 > f = FastRemoteCheck.new("127.0.0.1", 54321, "1.1.1.1", 6378, 3)
  => #<FastRemoteCheck:0x139cae0>
 > f.open_raw?
 (mirb):8: sys failed. errno: 11 message: Resource temporarily unavailable mrbgem message: recvfrom failed (RuntimeError)
-> f.connect?
+> f.connectable?
 (mirb):9: sys failed. errno: 115 message: Operation now in progress mrbgem message: connect failed (RuntimeError)
 >
 ```
