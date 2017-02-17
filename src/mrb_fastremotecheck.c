@@ -211,11 +211,13 @@ static mrb_int socket_with_timeout(mrb_state *mrb, int type, int protocol, struc
 
   ret = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
   if (ret < 0) {
+    close(sock);
     mrb_fastremotecheck_sys_fail(mrb, errno, "setsockopt SO_RCVTIMEO failed");
   }
 
   ret = setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout));
   if (ret < 0) {
+    close(sock);
     mrb_fastremotecheck_sys_fail(mrb, errno, "setsockopt SO_SNDTIMEO failed");
   }
 
@@ -248,6 +250,7 @@ static mrb_value mrb_fastremotecheck_port_raw(mrb_state *mrb, mrb_value self)
 
   ret = sendto(sock, data->tcphdr, data->tcphdr_size, 0, data->peer_ptr, data->saddr_size);
   if (ret < 0) {
+    close(sock);
     mrb_fastremotecheck_sys_fail(mrb, errno, "sendto failed");
   }
 
@@ -259,13 +262,16 @@ static mrb_value mrb_fastremotecheck_port_raw(mrb_state *mrb, mrb_value self)
 
     ret = recvfrom(sock, buffer, 4096, 0, (struct sockaddr *)&saddr, &saddr_size);
     if (ret < 0) {
+      close(sock);
       mrb_fastremotecheck_sys_fail(mrb, errno, "recvfrom failed");
     }
 
     ret = fastremotecheck_found_syn_ack_packet(data, buffer);
     if (ret == SYN_ACK_PACKET_FOUND) {
+      close(sock);
       return mrb_true_value();
     } else if (ret == RST_PACKET_FOUND) {
+      close(sock);
       return mrb_false_value();
     }
     retry++;
@@ -292,14 +298,17 @@ static mrb_value mrb_fastremotecheck_connect_so_linger(mrb_state *mrb, mrb_value
   if (ret < 0) {
     /* Connection refused */
     if (errno == ECONNREFUSED) {
+      close(sock);
       return mrb_false_value();
     }
     /* other errno */
+    close(sock);
     mrb_fastremotecheck_sys_fail(mrb, errno, "connect failed");
   }
 
   ret = setsockopt(sock, SOL_SOCKET, SO_LINGER, &so_linger, sizeof(so_linger));
   if (ret < 0) {
+    close(sock);
     mrb_fastremotecheck_sys_fail(mrb, errno, "setsockopt failed");
   }
 
