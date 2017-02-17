@@ -1,4 +1,6 @@
 sudo: true
+services:
+  - redis
 addons:
   apt:
     packages:
