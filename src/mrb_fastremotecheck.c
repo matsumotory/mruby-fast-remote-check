@@ -243,11 +243,10 @@ static mrb_value mrb_fastremotecheck_port_raw(mrb_state *mrb, mrb_value self)
   mrb_int retry = 0;
   mrb_int max_retry = 5; /* default max retry */
   mrb_fastremotecheck_data *data = DATA_PTR(self);
-  socklen_t saddr_size = data->saddr_size;
 
   sock = fastremotecheck_create_raw_socket(mrb, data->timeout);
 
-  ret = sendto(sock, data->tcphdr, data->tcphdr_size, 0, data->peer_ptr, saddr_size);
+  ret = sendto(sock, data->tcphdr, data->tcphdr_size, 0, data->peer_ptr, data->saddr_size);
   if (ret < 0) {
     mrb_fastremotecheck_sys_fail(mrb, errno, "sendto failed");
   }
@@ -255,8 +254,10 @@ static mrb_value mrb_fastremotecheck_port_raw(mrb_state *mrb, mrb_value self)
   while (retry < max_retry) {
     int ret = 0;
     unsigned char buffer[4096] = {0};
+    struct sockaddr saddr;
+    socklen_t saddr_size = sizeof(saddr);
 
-    ret = recvfrom(sock, buffer, 4096, 0, data->peer_ptr, &saddr_size);
+    ret = recvfrom(sock, buffer, 4096, 0, (struct sockaddr *)&saddr, &saddr_size);
     if (ret < 0) {
       mrb_fastremotecheck_sys_fail(mrb, errno, "recvfrom failed");
     }
@@ -275,12 +276,60 @@ static mrb_value mrb_fastremotecheck_port_raw(mrb_state *mrb, mrb_value self)
   return mrb_false_value();
 }
 
+static mrb_value mrb_fastremotecheck_connect_so_linger(mrb_state *mrb, mrb_value self)
+{
+  int ret;
+  int sock;
+  struct linger so_linger;
+  struct timeval timeout;
+  mrb_fastremotecheck_data *data = DATA_PTR(self);
+
+  so_linger.l_onoff = 1;
+  so_linger.l_linger = 0;
+  timeout = data->timeout;
+
+  sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  if (sock < 0) {
+    mrb_fastremotecheck_sys_fail(mrb, errno, "socket failed");
+  }
+
+  ret = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+  if (ret < 0) {
+    mrb_fastremotecheck_sys_fail(mrb, errno, "setsockopt SO_RCVTIMEO failed");
+  }
+
+  ret = setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout));
+  if (ret < 0) {
+    mrb_fastremotecheck_sys_fail(mrb, errno, "setsockopt SO_SNDTIMEO failed");
+  }
+
+  ret = connect(sock, data->peer_ptr, data->saddr_size);
+  if (ret < 0) {
+    /* Connection refused */
+    if (errno == ECONNREFUSED) {
+      return mrb_false_value();
+    }
+    /* other errno */
+    mrb_fastremotecheck_sys_fail(mrb, errno, "connect failed");
+  }
+
+  ret = setsockopt(sock, SOL_SOCKET, SO_LINGER, &so_linger, sizeof(so_linger));
+  if (ret < 0) {
+    mrb_fastremotecheck_sys_fail(mrb, errno, "setsockopt failed");
+  }
+
+  close(sock);
+
+  return mrb_true_value();
+}
+
 void mrb_mruby_fast_remote_check_gem_init(mrb_state *mrb)
 {
   struct RClass *fastremotecheck;
   fastremotecheck = mrb_define_class(mrb, "FastRemoteCheck", mrb->object_class);
   mrb_define_method(mrb, fastremotecheck, "initialize", mrb_fastremotecheck_init, MRB_ARGS_REQ(5));
   mrb_define_method(mrb, fastremotecheck, "open_raw?", mrb_fastremotecheck_port_raw, MRB_ARGS_NONE());
+  mrb_define_method(mrb, fastremotecheck, "connect?", mrb_fastremotecheck_connect_so_linger, MRB_ARGS_NONE());
   DONE;
 }
 

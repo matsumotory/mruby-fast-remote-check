@@ -15,12 +15,24 @@ end
 ```
 ## example
 ```ruby
-> FastRemoteCheck.new("127.0.0.1", 54321, "127.0.0.1", 6379, 3).open_raw?
+> f = FastRemoteCheck.new("127.0.0.1", 54321, "127.0.0.1", 6379, 3)
+ => #<FastRemoteCheck:0x139d560>
+> f.open_raw?
  => true
-> FastRemoteCheck.new("127.0.0.1", 54321, "127.0.0.1", 6378, 3).open_raw?
+> f.connect?
+ => true
+> f = FastRemoteCheck.new("127.0.0.1", 54321, "127.0.0.1", 6378, 3)
+ => #<FastRemoteCheck:0x139d2c0>
+> f.open_raw?
  => false
-> FastRemoteCheck.new("127.0.0.1", 54321, "1.1.1.1", 6378, 3).open_raw?
-(mirb):31: sys failed. errno: 11 message: Resource temporarily unavailable mrbgem message: recvfrom failed (RuntimeError)
+> f.connect?
+ => false
+> f = FastRemoteCheck.new("127.0.0.1", 54321, "1.1.1.1", 6378, 3)
+ => #<FastRemoteCheck:0x139cae0>
+> f.open_raw?
+(mirb):8: sys failed. errno: 11 message: Resource temporarily unavailable mrbgem message: recvfrom failed (RuntimeError)
+> f.connect?
+(mirb):9: sys failed. errno: 115 message: Operation now in progress mrbgem message: connect failed (RuntimeError)
 >
 ```
 
