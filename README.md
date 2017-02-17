@@ -1,6 +1,6 @@
 # mruby-fast-remote-check   [![Build Status](https://travis-ci.org/matsumotory/mruby-fast-remote-check.svg?branch=master)](https://travis-ci.org/matsumotory/mruby-fast-remote-check)
 
-FastRemoteCheck class
+FastRemoteCheck can perform port listening check at high speed using raw socket.
 
 ## install by mrbgems
 - add conf.gem line to `build_config.rb`
