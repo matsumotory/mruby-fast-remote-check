@@ -13,6 +13,36 @@ MRuby::Build.new do |conf|
     conf.gem :github => 'matsumotory/mruby-fast-remote-check'
 end
 ```
+
+## benchmark
+
+`f.ready? :raw` used RAW socket via my user TCP stack. This is very fast.
+
+`f.ready? :connect` used `connect(2)` and SO_LINGER `close(2)` via Kernel TCP stack.
+
+
+#### 6379 port listeing
+
+```
+> f = FastRemoteCheck.new("127.0.0.1", 54321, "127.0.0.1", 6379, 3)
+ => #<FastRemoteCheck:0x139f840>
+> a = Time.now; 100000.times {f.ready? :connect}; (Time.now - a).to_f
+ => 3.78796
+> a = Time.now; 100000.times {f.ready? :raw}; (Time.now - a).to_f
+ => 1.066795
+```
+
+#### 6380 port not listeing
+
+```
+> f = FastRemoteCheck.new("127.0.0.1", 54321, "127.0.0.1", 6380, 3)
+ => #<FastRemoteCheck:0x139f4b0>
+> a = Time.now; 100000.times {f.ready? :connect}; (Time.now - a).to_f
+ => 1.037658
+> a = Time.now; 100000.times {f.ready? :raw}; (Time.now - a).to_f
+ => 0.620506
+```
+
 ## example
 ```ruby
 > f = FastRemoteCheck.new("127.0.0.1", 54321, "127.0.0.1", 6379, 3)
