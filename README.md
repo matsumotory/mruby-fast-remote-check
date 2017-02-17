@@ -16,9 +16,9 @@ end
 
 ## benchmark
 
-`f.ready? :raw` used RAW socket via my user TCP stack. This is very fast.
+`f.ready? :raw` used RAW socket via my user TCP stack using 3 packets. This is very fast.
 
-`f.ready? :connect` used `connect(2)` and SO_LINGER `close(2)` via Kernel TCP stack.
+`f.ready? :connect` used `connect(2)` and SO_LINGER `close(2)` via Kernel TCP stack using 4 packets.
 
 
 #### 6379 port listeing
