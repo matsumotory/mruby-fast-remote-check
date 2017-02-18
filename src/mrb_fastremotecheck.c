@@ -180,7 +180,7 @@ static mrb_value mrb_fastremotecheck_init(mrb_state *mrb, mrb_value self)
   peer->sin_port = htons(dst_port);
   peer->sin_family = AF_INET;
 
-  bcopy((char *)tcphdr, (char *)&pheader->ptcphdr, sizeof(struct ip));
+  bcopy((char *)tcphdr, (char *)&pheader->ptcphdr, sizeof(struct tcphdr));
   tcphdr->check = checksum((unsigned short *)pheader, 32);
 
   data->src_ip = pheader->iphdr.src_ip;
