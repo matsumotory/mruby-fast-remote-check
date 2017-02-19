@@ -11,6 +11,7 @@
 #include "mruby.h"
 #include "mruby/data.h"
 #include "mruby/error.h"
+#include "mruby/class.h"
 
 #include <stdio.h>
 #include <stdlib.h>
