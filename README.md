@@ -10,7 +10,7 @@ MRuby::Build.new do |conf|
 
     # ... (snip) ...
 
-    conf.gem :github => 'matsumotory/mruby-fast-remote-check'
+    conf.gem :mgem => 'mruby-fast-remote-check'
 end
 ```
 
