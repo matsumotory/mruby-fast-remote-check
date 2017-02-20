@@ -435,6 +435,7 @@ static mrb_value mrb_icmp_ping(mrb_state *mrb, mrb_value self)
 void mrb_mruby_fast_remote_check_gem_init(mrb_state *mrb)
 {
   struct RClass *fastremotecheck;
+  struct RClass *tcp;
   struct RClass *icmp;
 
   fastremotecheck = mrb_define_class(mrb, "FastRemoteCheck", mrb->object_class);
@@ -443,6 +444,12 @@ void mrb_mruby_fast_remote_check_gem_init(mrb_state *mrb)
   mrb_define_method(mrb, fastremotecheck, "initialize", mrb_fastremotecheck_init, MRB_ARGS_REQ(5));
   mrb_define_method(mrb, fastremotecheck, "open_raw?", mrb_fastremotecheck_port_raw, MRB_ARGS_NONE());
   mrb_define_method(mrb, fastremotecheck, "connectable?", mrb_fastremotecheck_connect_so_linger, MRB_ARGS_NONE());
+  DONE;
+
+  tcp = mrb_define_class_under(mrb, fastremotecheck, "TCP", mrb->object_class);
+  mrb_define_method(mrb, tcp, "initialize", mrb_fastremotecheck_init, MRB_ARGS_REQ(5));
+  mrb_define_method(mrb, tcp, "open_raw?", mrb_fastremotecheck_port_raw, MRB_ARGS_NONE());
+  mrb_define_method(mrb, tcp, "connectable?", mrb_fastremotecheck_connect_so_linger, MRB_ARGS_NONE());
   DONE;
 
   icmp = mrb_define_class_under(mrb, fastremotecheck, "ICMP", mrb->object_class);
