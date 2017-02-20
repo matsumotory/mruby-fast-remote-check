@@ -25,7 +25,9 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
+#include <netinet/ip_icmp.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 
 #define SYS_FAIL_MESSAGE_LENGTH 2048
 #define DONE mrb_gc_arena_restore(mrb, 0);
@@ -60,6 +62,12 @@ typedef struct {
   struct timeval timeout;
 } mrb_fastremotecheck_data;
 
+typedef struct {
+  u_int32_t dst_ip;
+  struct sockaddr *peer_ptr;
+  struct timeval timeout;
+} mrb_icmp_data;
+
 static void mrb_fastremotecheck_data_free(mrb_state *mrb, void *p)
 {
   mrb_fastremotecheck_data *data = (mrb_fastremotecheck_data *)p;
@@ -77,6 +85,22 @@ static void mrb_fastremotecheck_data_free(mrb_state *mrb, void *p)
 
 static const struct mrb_data_type mrb_fastremotecheck_data_type = {
     "mrb_fastremotecheck_data", mrb_fastremotecheck_data_free,
+};
+
+static void mrb_icmp_data_free(mrb_state *mrb, void *p)
+{
+  mrb_icmp_data *data = (mrb_icmp_data *)p;
+
+  if (data) {
+    if (data->peer_ptr) {
+      mrb_free(mrb, data->peer_ptr);
+    }
+    mrb_free(mrb, data);
+  }
+}
+
+static const struct mrb_data_type mrb_icmp_data_type = {
+    "mrb_icmp_data", mrb_icmp_data_free,
 };
 
 static void mrb_fastremotecheck_sys_fail(mrb_state *mrb, int error_no, const char *fmt, ...)
@@ -318,15 +342,113 @@ static mrb_value mrb_fastremotecheck_connect_so_linger(mrb_state *mrb, mrb_value
   return mrb_true_value();
 }
 
+void setup_icmphdr(u_int8_t type, u_int8_t code, u_int16_t id, u_int16_t seq, struct icmphdr *icmphdr)
+{
+  memset(icmphdr, 0, sizeof(struct icmphdr));
+  icmphdr->type = type;
+  icmphdr->code = code;
+  icmphdr->checksum = 0;
+  icmphdr->un.echo.id = id;
+  icmphdr->un.echo.sequence = seq;
+  icmphdr->checksum = checksum((unsigned short *)icmphdr, sizeof(struct icmphdr));
+}
+
+static mrb_value mrb_icmp_init(mrb_state *mrb, mrb_value self)
+{
+  mrb_icmp_data *data;
+  char *dst_ip;
+  mrb_int timeout_arg = 0;
+  struct sockaddr_in *addr;
+  struct timeval timeout;
+  timeout.tv_sec = 3; /* default timeout */
+  timeout.tv_usec = 0;
+
+  data = (mrb_icmp_data *)DATA_PTR(self);
+  if (data) {
+    mrb_free(mrb, data);
+  }
+
+  DATA_TYPE(self) = &mrb_icmp_data_type;
+  DATA_PTR(self) = NULL;
+
+  mrb_get_args(mrb, "zi", &dst_ip, &timeout_arg);
+  data = (mrb_icmp_data *)mrb_malloc(mrb, sizeof(mrb_icmp_data));
+
+  if (timeout_arg) {
+    /* for now, support sec only */
+    timeout.tv_sec = timeout_arg;
+    timeout.tv_usec = 0;
+  }
+
+  addr = (struct sockaddr_in *)mrb_malloc(mrb, sizeof(struct sockaddr_in));
+  memset(addr, 0, sizeof(struct sockaddr_in));
+  addr->sin_addr.s_addr = inet_addr(dst_ip);
+  addr->sin_family = AF_INET;
+
+  data->peer_ptr = (struct sockaddr *)addr;
+  data->timeout = timeout;
+  data->dst_ip = addr->sin_addr.s_addr;
+
+  DATA_PTR(self) = data;
+
+  return self;
+}
+
+static mrb_value mrb_icmp_ping(mrb_state *mrb, mrb_value self)
+{
+  int sock;
+  int ret;
+  struct icmphdr icmphdr;
+  struct iphdr *recv_iphdr;
+  struct icmphdr *recv_icmphdr;
+  char buf[1500] = {0};
+  mrb_icmp_data *data = (mrb_icmp_data *)DATA_PTR(self);
+
+  sock = socket_with_timeout(mrb, SOCK_RAW, IPPROTO_ICMP, data->timeout);
+
+  setup_icmphdr(ICMP_ECHO, 0, 0, 0, &icmphdr);
+
+  ret = sendto(sock, (char *)&icmphdr, sizeof(icmphdr), 0, data->peer_ptr, sizeof(struct sockaddr_in));
+  if (ret < 0) {
+    close(sock);
+    mrb_fastremotecheck_sys_fail(mrb, errno, "sendto failed");
+  }
+
+  ret = recv(sock, buf, sizeof(buf), 0);
+  if (ret < 0) {
+    close(sock);
+    mrb_fastremotecheck_sys_fail(mrb, errno, "recv failed");
+  }
+
+  recv_iphdr = (struct iphdr *)buf;
+  recv_icmphdr = (struct icmphdr *)(buf + (recv_iphdr->ihl << 2));
+
+  if (data->dst_ip == recv_iphdr->saddr && recv_icmphdr->type == ICMP_ECHOREPLY) {
+    close(sock);
+    return mrb_true_value();
+  }
+
+  close(sock);
+  return mrb_false_value();
+}
+
 void mrb_mruby_fast_remote_check_gem_init(mrb_state *mrb)
 {
   struct RClass *fastremotecheck;
+  struct RClass *icmp;
+
   fastremotecheck = mrb_define_class(mrb, "FastRemoteCheck", mrb->object_class);
   MRB_SET_INSTANCE_TT(fastremotecheck, MRB_TT_DATA);
 
   mrb_define_method(mrb, fastremotecheck, "initialize", mrb_fastremotecheck_init, MRB_ARGS_REQ(5));
   mrb_define_method(mrb, fastremotecheck, "open_raw?", mrb_fastremotecheck_port_raw, MRB_ARGS_NONE());
   mrb_define_method(mrb, fastremotecheck, "connectable?", mrb_fastremotecheck_connect_so_linger, MRB_ARGS_NONE());
+  DONE;
+
+  icmp = mrb_define_class_under(mrb, fastremotecheck, "ICMP", mrb->object_class);
+  mrb_define_method(mrb, icmp, "initialize", mrb_icmp_init, MRB_ARGS_REQ(2));
+  mrb_define_method(mrb, icmp, "ping?", mrb_icmp_ping, MRB_ARGS_NONE());
+
   DONE;
 }
 

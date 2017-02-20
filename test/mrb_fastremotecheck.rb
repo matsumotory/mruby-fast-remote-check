@@ -49,3 +49,20 @@ assert("FastRemoteCheck#oepn_raw? for ip unreachable") do
   after = Time.now
   assert_true (after - before) < (timeout + 1)
 end
+
+assert("FastRemoteCheck::ICMP#ping? for ip reachable") do
+  # check redis port
+  t = FastRemoteCheck::ICMP.new "8.8.8.8", 3
+  assert_true t.ping?
+end
+
+assert("FastRemoteCheck::ICMP#ping? for ip unreachable") do
+  # check redis port
+  timeout = 2
+  t = FastRemoteCheck::ICMP.new "1.1.1.1", timeout
+  before = Time.now
+  assert_raise(RuntimeError) { t.ping? }
+  after = Time.now
+  assert_true (after - before) < (timeout + 1)
+end
+
