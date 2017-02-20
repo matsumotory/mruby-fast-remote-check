@@ -44,6 +44,9 @@ end
 ```
 
 ## example
+
+### Listeing check
+
 ```ruby
 > f = FastRemoteCheck.new("127.0.0.1", 54321, "127.0.0.1", 6379, 3)
  => #<FastRemoteCheck:0x139d560>
@@ -67,6 +70,16 @@ end
 (mirb):8: sys failed. errno: 11 message: Resource temporarily unavailable mrbgem message: recvfrom failed (RuntimeError)
 > f.connectable?
 (mirb):9: sys failed. errno: 115 message: Operation now in progress mrbgem message: connect failed (RuntimeError)
+>
+```
+
+### ICMP check
+
+```ruby
+> FastRemoteCheck::ICMP.new("8.8.8.8", 3).ping?
+ => true
+> FastRemoteCheck::ICMP.new("8.8.8.9", 3).ping?
+(mirb):4: sys failed. errno: 11 message: Resource temporarily unavailable mrbgem message: recv failed (RuntimeError)
 >
 ```
 
