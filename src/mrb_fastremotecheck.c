@@ -447,12 +447,14 @@ void mrb_mruby_fast_remote_check_gem_init(mrb_state *mrb)
   DONE;
 
   tcp = mrb_define_class_under(mrb, fastremotecheck, "TCP", mrb->object_class);
+  MRB_SET_INSTANCE_TT(tcp, MRB_TT_DATA);
   mrb_define_method(mrb, tcp, "initialize", mrb_fastremotecheck_init, MRB_ARGS_REQ(5));
   mrb_define_method(mrb, tcp, "open_raw?", mrb_fastremotecheck_port_raw, MRB_ARGS_NONE());
   mrb_define_method(mrb, tcp, "connectable?", mrb_fastremotecheck_connect_so_linger, MRB_ARGS_NONE());
   DONE;
 
   icmp = mrb_define_class_under(mrb, fastremotecheck, "ICMP", mrb->object_class);
+  MRB_SET_INSTANCE_TT(icmp, MRB_TT_DATA);
   mrb_define_method(mrb, icmp, "initialize", mrb_icmp_init, MRB_ARGS_REQ(2));
   mrb_define_method(mrb, icmp, "ping?", mrb_icmp_ping, MRB_ARGS_NONE());
 
