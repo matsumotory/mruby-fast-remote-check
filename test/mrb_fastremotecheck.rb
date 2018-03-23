@@ -16,7 +16,7 @@ assert("FastRemoteCheck#open_raw? for not linsting") do
   assert_false t.ready?(:raw)
 end
 
-assert("FastRemoteCheck#oepn_raw? for ip unreachable") do
+assert("FastRemoteCheck#open_raw? for ip unreachable") do
   # check redis port
   timeout = 2
   t = FastRemoteCheck.new "127.0.0.1", 54321, "203.0.113.1", 6380, timeout
@@ -40,7 +40,7 @@ assert("FastRemoteCheck#connectable? for not linsting") do
   assert_false t.ready?(:connect)
 end
 
-assert("FastRemoteCheck#oepn_raw? for ip unreachable") do
+assert("FastRemoteCheck#open_raw? for ip unreachable") do
   # check redis port
   timeout = 2
   t = FastRemoteCheck.new "127.0.0.1", 54321, "203.0.113.1", 6380, timeout
