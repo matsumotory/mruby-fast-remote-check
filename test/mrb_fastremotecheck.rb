@@ -19,7 +19,7 @@ end
 assert("FastRemoteCheck#oepn_raw? for ip unreachable") do
   # check redis port
   timeout = 2
-  t = FastRemoteCheck.new "127.0.0.1", 54321, "1.1.1.1", 6380, timeout
+  t = FastRemoteCheck.new "127.0.0.1", 54321, "203.0.113.1", 6380, timeout
   before = Time.now
   assert_raise(RuntimeError) { t.open_raw? }
   after = Time.now
@@ -43,7 +43,7 @@ end
 assert("FastRemoteCheck#oepn_raw? for ip unreachable") do
   # check redis port
   timeout = 2
-  t = FastRemoteCheck.new "127.0.0.1", 54321, "1.1.1.1", 6380, timeout
+  t = FastRemoteCheck.new "127.0.0.1", 54321, "203.0.113.1", 6380, timeout
   before = Time.now
   assert_raise(RuntimeError) { t.connectable? }
   after = Time.now
