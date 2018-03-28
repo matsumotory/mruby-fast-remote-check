@@ -34,6 +34,7 @@
 #define PACKET_NOT_FOUND 0
 #define SYN_ACK_PACKET_FOUND 1
 #define RST_PACKET_FOUND 2
+#define FLOAT_TO_TIMEVAL(f, t) { t.tv_sec = f; t.tv_usec = (f - (double)t.tv_sec) * 1000000; }
 
 struct pseudo_ip_header {
   unsigned int src_ip;
@@ -147,7 +148,7 @@ static mrb_value mrb_fastremotecheck_init(mrb_state *mrb, mrb_value self)
   char *dst_ip;
   mrb_int src_port;
   mrb_int dst_port;
-  mrb_int timeout_arg = 0;
+  mrb_float timeout_arg = 0;
   struct tcphdr *tcphdr;
   struct pseudo_header *pheader;
   struct sockaddr_in *peer;
@@ -163,13 +164,11 @@ static mrb_value mrb_fastremotecheck_init(mrb_state *mrb, mrb_value self)
   DATA_TYPE(self) = &mrb_fastremotecheck_data_type;
   DATA_PTR(self) = NULL;
 
-  mrb_get_args(mrb, "zizii", &src_ip, &src_port, &dst_ip, &dst_port, &timeout_arg);
+  mrb_get_args(mrb, "zizif", &src_ip, &src_port, &dst_ip, &dst_port, &timeout_arg);
   data = (mrb_fastremotecheck_data *)mrb_malloc(mrb, sizeof(mrb_fastremotecheck_data));
 
   if (timeout_arg) {
-    /* for now, support sec only */
-    timeout.tv_sec = timeout_arg;
-    timeout.tv_usec = 0;
+    FLOAT_TO_TIMEVAL(timeout_arg, timeout);
   }
 
   tcphdr = (struct tcphdr *)mrb_malloc(mrb, sizeof(struct tcphdr));
@@ -357,7 +356,7 @@ static mrb_value mrb_icmp_init(mrb_state *mrb, mrb_value self)
 {
   mrb_icmp_data *data;
   char *dst_ip;
-  mrb_int timeout_arg = 0;
+  mrb_float timeout_arg = 0;
   struct sockaddr_in *addr;
   struct timeval timeout;
   timeout.tv_sec = 3; /* default timeout */
@@ -371,13 +370,12 @@ static mrb_value mrb_icmp_init(mrb_state *mrb, mrb_value self)
   DATA_TYPE(self) = &mrb_icmp_data_type;
   DATA_PTR(self) = NULL;
 
-  mrb_get_args(mrb, "zi", &dst_ip, &timeout_arg);
+  mrb_get_args(mrb, "zf", &dst_ip, &timeout_arg);
   data = (mrb_icmp_data *)mrb_malloc(mrb, sizeof(mrb_icmp_data));
 
   if (timeout_arg) {
     /* for now, support sec only */
-    timeout.tv_sec = timeout_arg;
-    timeout.tv_usec = 0;
+    FLOAT_TO_TIMEVAL(timeout_arg, timeout);
   }
 
   addr = (struct sockaddr_in *)mrb_malloc(mrb, sizeof(struct sockaddr_in));
