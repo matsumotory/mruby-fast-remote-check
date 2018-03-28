@@ -50,6 +50,16 @@ assert("FastRemoteCheck#open_raw? for ip unreachable") do
   assert_true (after - before) < (timeout + 1)
 end
 
+assert("FastRemoteCheck#open_raw? for ip unreachable with timeout as msec") do
+  # check redis port
+  timeout = 2.358
+  t = FastRemoteCheck.new "127.0.0.1", 54321, "203.0.113.1", 6380, timeout
+  before = Time.now
+  assert_raise(RuntimeError) { t.connectable? }
+  after = Time.now
+  assert_true (after - before) < (timeout + 1)
+end
+
 assert("FastRemoteCheck::ICMP#ping? for ip reachable") do
   t = FastRemoteCheck::ICMP.new "8.8.8.8", 3
   assert_true t.ping?
@@ -57,6 +67,15 @@ end
 
 assert("FastRemoteCheck::ICMP#ping? for ip unreachable") do
   timeout = 2
+  t = FastRemoteCheck::ICMP.new "203.0.113.1", timeout
+  before = Time.now
+  assert_raise(RuntimeError) { t.ping? }
+  after = Time.now
+  assert_true (after - before) < (timeout + 1)
+end
+
+assert("FastRemoteCheck::ICMP#ping? for ip unreachable with timeout as msec") do
+  timeout = 2.358
   t = FastRemoteCheck::ICMP.new "203.0.113.1", timeout
   before = Time.now
   assert_raise(RuntimeError) { t.ping? }
