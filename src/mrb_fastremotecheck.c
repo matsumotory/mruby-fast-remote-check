@@ -28,7 +28,6 @@
 #include <netinet/ip_icmp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <sys/time.h>
 
 #define SYS_FAIL_MESSAGE_LENGTH 2048
 #define DONE mrb_gc_arena_restore(mrb, 0);
@@ -36,7 +35,6 @@
 #define SYN_ACK_PACKET_FOUND 1
 #define RST_PACKET_FOUND 2
 #define FLOAT_TO_TIMEVAL(f, t) { t.tv_sec = f; t.tv_usec = (f - (double)t.tv_sec) * 1000000; }
-#define TIMEVAL_TO_USEC(tv) (tv.tv_sec * 1000000L + tv.tv_usec)
 
 struct pseudo_ip_header {
   unsigned int src_ip;
@@ -401,8 +399,6 @@ static mrb_value mrb_icmp_ping(mrb_state *mrb, mrb_value self)
   struct icmphdr icmphdr;
   struct iphdr *recv_iphdr;
   struct icmphdr *recv_icmphdr;
-  long timediff = 0;
-  struct timeval begin_time, current_time;
   char buf[1500] = {0};
   mrb_icmp_data *data = (mrb_icmp_data *)DATA_PTR(self);
 
@@ -416,31 +412,18 @@ static mrb_value mrb_icmp_ping(mrb_state *mrb, mrb_value self)
     mrb_fastremotecheck_sys_fail(mrb, errno, "sendto failed");
   }
 
-  gettimeofday(&begin_time, NULL);
+  ret = recv(sock, buf, sizeof(buf), 0);
+  if (ret < 0) {
+    close(sock);
+    mrb_fastremotecheck_sys_fail(mrb, errno, "recv failed");
+  }
 
-  while (1) {
-    gettimeofday(&current_time, NULL);
-    timediff = TIMEVAL_TO_USEC(current_time) - TIMEVAL_TO_USEC(begin_time);
+  recv_iphdr = (struct iphdr *)buf;
+  recv_icmphdr = (struct icmphdr *)(buf + (recv_iphdr->ihl << 2));
 
-    if (timediff > TIMEVAL_TO_USEC(data->timeout)) {
-      close(sock);
-      mrb_fastremotecheck_sys_fail(mrb, errno, "recv timeout");
-    }
-
-    memset(&buf, 0, sizeof(buf));
-    ret = recv(sock, buf, sizeof(buf), MSG_DONTWAIT);
-    if (ret < 0) {
-       continue;
-    } else {
-      recv_iphdr = (struct iphdr *)buf;
-      recv_icmphdr = (struct icmphdr *)(buf + (recv_iphdr->ihl << 2));
-
-      if (data->dst_ip == recv_iphdr->saddr && recv_icmphdr->type == ICMP_ECHOREPLY) {
-        close(sock);
-        return mrb_true_value();
-      }
-      continue;
-    }
+  if (data->dst_ip == recv_iphdr->saddr && recv_icmphdr->type == ICMP_ECHOREPLY) {
+    close(sock);
+    return mrb_true_value();
   }
 
   close(sock);
