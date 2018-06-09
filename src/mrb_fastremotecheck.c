@@ -28,7 +28,6 @@
 #include <netinet/ip_icmp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <sys/epoll.h>
 
 #define SYS_FAIL_MESSAGE_LENGTH 2048
 #define DONE mrb_gc_arena_restore(mrb, 0);
@@ -36,7 +35,6 @@
 #define SYN_ACK_PACKET_FOUND 1
 #define RST_PACKET_FOUND 2
 #define FLOAT_TO_TIMEVAL(f, t) { t.tv_sec = f; t.tv_usec = (f - (double)t.tv_sec) * 1000000; }
-#define TIMEVAL_TO_MSEC(tv) (tv.tv_sec * 1000 + tv.tv_usec)
 
 struct pseudo_ip_header {
   unsigned int src_ip;
@@ -402,9 +400,6 @@ static mrb_value mrb_icmp_ping(mrb_state *mrb, mrb_value self)
   struct iphdr *recv_iphdr;
   struct icmphdr *recv_icmphdr;
   char buf[1500] = {0};
-  int epfd, ready;
-  struct epoll_event event, events[1];
-
   mrb_icmp_data *data = (mrb_icmp_data *)DATA_PTR(self);
 
   sock = socket_with_timeout(mrb, SOCK_RAW, IPPROTO_ICMP, data->timeout);
@@ -417,57 +412,22 @@ static mrb_value mrb_icmp_ping(mrb_state *mrb, mrb_value self)
     mrb_fastremotecheck_sys_fail(mrb, errno, "sendto failed");
   }
 
-  epfd = epoll_create(1);
-  if(epfd == -1) {
-    close(epfd);
+  ret = recv(sock, buf, sizeof(buf), 0);
+  if (ret < 0) {
     close(sock);
-    mrb_fastremotecheck_sys_fail(mrb, errno, "epoll_create failed");
+    mrb_fastremotecheck_sys_fail(mrb, errno, "recv failed");
   }
 
-  event.data.fd = sock;
-  event.events = EPOLLIN;
+  recv_iphdr = (struct iphdr *)buf;
+  recv_icmphdr = (struct icmphdr *)(buf + (recv_iphdr->ihl << 2));
 
-  if (epoll_ctl(epfd, EPOLL_CTL_ADD, sock, &event) != 0) {
-    close(epfd);
+  if (data->dst_ip == recv_iphdr->saddr && recv_icmphdr->type == ICMP_ECHOREPLY) {
     close(sock);
-    mrb_fastremotecheck_sys_fail(mrb, errno, "epoll_ctl failed");
+    return mrb_true_value();
   }
 
-  while (1) {
-    ready = epoll_wait(epfd, events, 1, TIMEVAL_TO_MSEC(data->timeout));
-    if (ready < 0) {
-      close(epfd);
-      close(sock);
-      mrb_fastremotecheck_sys_fail(mrb, errno, "epoll_wait failed");
-    }
-
-    if (ready == 0) {
-      close(epfd);
-      close(sock);
-      mrb_fastremotecheck_sys_fail(mrb, errno, "epoll_wait timeout");
-    }    
-
-    memset(&buf, 0, sizeof(buf));
-    ret = recv(sock, buf, sizeof(buf), MSG_DONTWAIT);
-    if (ret < 0) {
-      if (errno == EAGAIN) {
-        continue;
-      }
-      close(epfd);
-      close(sock);
-      mrb_fastremotecheck_sys_fail(mrb, errno, "recv failed");
-    } else {
-      recv_iphdr = (struct iphdr *)buf;
-      recv_icmphdr = (struct icmphdr *)(buf + (recv_iphdr->ihl << 2));
-
-      if (data->dst_ip == recv_iphdr->saddr && recv_icmphdr->type == ICMP_ECHOREPLY) {
-        close(epfd);
-        close(sock);
-        return mrb_true_value();
-      }
-      continue;
-    }
-  }
+  close(sock);
+  return mrb_false_value();
 }
 
 void mrb_mruby_fast_remote_check_gem_init(mrb_state *mrb)
