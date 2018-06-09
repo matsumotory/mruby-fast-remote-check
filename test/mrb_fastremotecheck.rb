@@ -82,3 +82,12 @@ assert("FastRemoteCheck::ICMP#ping? for ip unreachable with timeout as msec") do
   after = Time.now
   assert_true (after - before) < (timeout + 1)
 end
+
+assert("FastRemoteCheck::ICMP#ping? for wait packet reply") do
+  ret = []
+  th = []
+  th << Thread.new { FastRemoteCheck::ICMP.new("8.8.8.8", 3).ping? }
+  th << Thread.new { FastRemoteCheck::ICMP.new("1.1.1.1", 3).ping? }
+  th.each {|t| ret << t.join}
+  assert_false(ret.include?(false))
+end
