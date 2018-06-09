@@ -28,7 +28,6 @@
 #include <netinet/ip_icmp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <sys/time.h>
 
 #define SYS_FAIL_MESSAGE_LENGTH 2048
 #define DONE mrb_gc_arena_restore(mrb, 0);
@@ -36,7 +35,6 @@
 #define SYN_ACK_PACKET_FOUND 1
 #define RST_PACKET_FOUND 2
 #define FLOAT_TO_TIMEVAL(f, t) { t.tv_sec = f; t.tv_usec = (f - (double)t.tv_sec) * 1000000; }
-#define TIMEVAL_TO_MSEC(tv) (tv.tv_sec * 1000 + tv.tv_usec / 1000)
 
 struct pseudo_ip_header {
   unsigned int src_ip;
@@ -402,13 +400,9 @@ static mrb_value mrb_icmp_ping(mrb_state *mrb, mrb_value self)
   struct iphdr *recv_iphdr;
   struct icmphdr *recv_icmphdr;
   char buf[1500] = {0};
-  int timediff = 0;
-  struct timeval begin_time, current_time;
   mrb_icmp_data *data = (mrb_icmp_data *)DATA_PTR(self);
 
   sock = socket_with_timeout(mrb, SOCK_RAW, IPPROTO_ICMP, data->timeout);
-
-  gettimeofday(&begin_time, NULL);
 
   setup_icmphdr(ICMP_ECHO, 0, 0, 0, &icmphdr);
 
@@ -418,31 +412,22 @@ static mrb_value mrb_icmp_ping(mrb_state *mrb, mrb_value self)
     mrb_fastremotecheck_sys_fail(mrb, errno, "sendto failed");
   }
 
-  while (1) {
-    memset(&buf, 0, sizeof(buf));
-    ret = recv(sock, buf, sizeof(buf), 0);
-    if (ret < 0) {
-      close(sock);
-      mrb_fastremotecheck_sys_fail(mrb, errno, "recv failed");
-    } else {
-      recv_iphdr = (struct iphdr *)buf;
-      recv_icmphdr = (struct icmphdr *)(buf + (recv_iphdr->ihl << 2));
-
-      if (data->dst_ip == recv_iphdr->saddr && recv_icmphdr->type == ICMP_ECHOREPLY) {
-        close(sock);
-        return mrb_true_value();
-      }
-
-      gettimeofday(&current_time, NULL);
-      timediff = TIMEVAL_TO_MSEC(current_time) - TIMEVAL_TO_MSEC(begin_time);
-
-      if (timediff > TIMEVAL_TO_MSEC(data->timeout)) {
-        close(sock);
-        mrb_fastremotecheck_sys_fail(mrb, errno, "recv timeout");
-      }
-      continue;
-    }
+  ret = recv(sock, buf, sizeof(buf), 0);
+  if (ret < 0) {
+    close(sock);
+    mrb_fastremotecheck_sys_fail(mrb, errno, "recv failed");
   }
+
+  recv_iphdr = (struct iphdr *)buf;
+  recv_icmphdr = (struct icmphdr *)(buf + (recv_iphdr->ihl << 2));
+
+  if (data->dst_ip == recv_iphdr->saddr && recv_icmphdr->type == ICMP_ECHOREPLY) {
+    close(sock);
+    return mrb_true_value();
+  }
+
+  close(sock);
+  return mrb_false_value();
 }
 
 void mrb_mruby_fast_remote_check_gem_init(mrb_state *mrb)
